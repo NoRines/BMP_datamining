@@ -102,7 +102,7 @@ def findbestquestion(impurity, data):
 
     for col in range(numattribs):
         uniquevals = set([row[col] for row in data]) # gets unique values in the current column
-        
+
         for val in uniquevals:
             question = (col, val)
 
@@ -124,6 +124,7 @@ def findbestquestion(impurity, data):
 def newnode():
     node = {
             'type' : 'node',
+			'id' : 0,
             'truechild' : None,
             'falsechild' : None,
             'question' : None,
@@ -137,6 +138,7 @@ def newnode():
 def newleaf():
     leaf = {
             'type' : 'leaf',
+			'id' : 0,
             'classes' : None,
             'prediction' : None
     }

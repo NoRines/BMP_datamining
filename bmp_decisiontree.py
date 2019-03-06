@@ -124,7 +124,7 @@ def findbestquestion(impurity, data):
 def newnode():
     node = {
             'type' : 'node',
-			'id' : 0,
+            'side' : None,
             'truechild' : None,
             'falsechild' : None,
             'question' : None,
@@ -138,26 +138,29 @@ def newnode():
 def newleaf():
     leaf = {
             'type' : 'leaf',
-			'id' : 0,
+            'side' : None,
             'classes' : None,
             'prediction' : None
     }
     return leaf.copy()
 
+# Gets the best prediction
+#
+def getprediction(classes):
+    bestclass = None
+    bestscore = 0
+    for c in classes:
+        if classes[c] > bestscore:
+            bestscore = classes[c]
+            bestclass = c
+    return bestclass
+
 # Builds the tree using CART
 #
-def buildtree(data, maxdepth = 10, minsplitsize = 2, minleafsize = 1):
-    def getprediction(classes):
-        bestclass = None
-        bestscore = 0
-        for c in classes:
-            if classes[c] > bestscore:
-                bestscore = classes[c]
-                bestclass = c
-        return bestclass
-
-
+def buildtree(data, maxdepth = 10, minsplitsize = 2, minleafsize = 1, side=None):
+    
     node = newnode()
+    maxdepth -= 1
 
     dataimpurity = gini(data)
     question, gain = findbestquestion(dataimpurity, data)
@@ -166,11 +169,13 @@ def buildtree(data, maxdepth = 10, minsplitsize = 2, minleafsize = 1):
         leaf = newleaf()
         leaf['classes'] = countclasses(data)
         leaf['prediction'] = getprediction(leaf['classes'])
+        leaf['side'] = side
         return leaf
 
     node['question'] = question
     node['infogain'] = gain
     node['giniindex'] = dataimpurity
+    node['side'] = side
 
     truelist, falselist = splitdata(data, question)
 
@@ -178,10 +183,11 @@ def buildtree(data, maxdepth = 10, minsplitsize = 2, minleafsize = 1):
         leaf = newleaf()
         leaf['classes'] = countclasses(data)
         leaf['prediction'] = getprediction(leaf['classes'])
+        leaf['side'] = side
         return leaf
 
-    node['truechild'] = buildtree(truelist, maxdepth-1, minsplitsize, minleafsize)
-    node['falsechild'] = buildtree(falselist, maxdepth-1, minsplitsize, minleafsize)
+    node['truechild'] = buildtree(truelist, maxdepth, minsplitsize, minleafsize, 'truechild')
+    node['falsechild'] = buildtree(falselist, maxdepth, minsplitsize, minleafsize, 'falsechild')
 
     return node
 
@@ -208,19 +214,42 @@ def predict(treenode, data):
 
     return res
 
-# Prints the tree
+# Removes redundant paths by merging leafs
 #
-def printtree(node, spacing=""):
-    if node['type'] == 'leaf':
-        #print(spacing + "Predict ", node['prediction'])
-        print(spacing + "Predict ", node['classes'])
-        return
+def mergeleafs(node, parent=None):
+    if node['type'] == 'node':
+        tchild = node['truechild']
+        fchild = node['falsechild']
 
-    print(spacing + "Is col " + str(node['question'][0]) + "==" + str(node['question'][1]) + '?')
+        if tchild['type'] == 'node':
+            mergeleafs(tchild, node)
+        if fchild['type'] == 'node':
+            mergeleafs(fchild, node)
 
-    print(spacing + '---> True:')
-    printtree(node['truechild'], spacing + "  ")
+        tchild = node['truechild']
+        fchild = node['falsechild']
 
-    print(spacing + '---> False:')
-    printtree(node['falsechild'], spacing + "  ")
+        if tchild['type'] == 'leaf' and fchild['type'] == 'leaf':
+
+            if parent == None:
+                return
+
+            if tchild['prediction'] == fchild['prediction']:
+                # Calc the new classes value
+                classes = tchild['classes'].copy()
+                for key in fchild['classes']:
+                    if key in classes:
+                        classes[key] += fchild['classes'][key]
+                    else:
+                        classes[key] = fchild['classes'][key]
+
+                # get the prediction
+                pred = tchild['prediction']
+
+                leaf = newleaf()
+                leaf['classes'] = classes
+                leaf['prediction'] = pred
+                leaf['side'] = node['side']
+
+                parent[node['side']] = leaf
 

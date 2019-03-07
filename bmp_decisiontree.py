@@ -1,6 +1,6 @@
 import csv
 import operator
-import random
+from random import randrange
 
 # Checks if string is float
 #
@@ -95,12 +95,19 @@ def splitdata(data, question):
 
 # Finds the question with the highest info gain
 #
-def findbestquestion(impurity, data):
+def findbestquestion(impurity, data, nattribs=None):
     bestgain = 0.0
     bestquestion = None
-    numattribs = len(data[0]) - 1 # number of cols - 1
+    if nattribs == None:
+        nattribs = len(data[0]) - 1 # number of cols - 1
 
-    for col in range(numattribs):
+    attribs = []
+    while len(attribs) < nattribs:
+        i = randrange(len(data[0])-1)
+        if i not in attribs:
+            attribs.append(i)
+
+    for col in attribs:
         uniquevals = set([row[col] for row in data]) # gets unique values in the current column
 
         for val in uniquevals:
@@ -157,13 +164,13 @@ def getprediction(classes):
 
 # Builds the tree using CART
 #
-def buildtree(data, maxdepth = 10, minsplitsize = 2, minleafsize = 1, side=None):
+def buildtree(data, maxdepth = 10, minsplitsize = 2, minleafsize = 1, nattribs=None, side=None):
     
     node = newnode()
     maxdepth -= 1
 
     dataimpurity = gini(data)
-    question, gain = findbestquestion(dataimpurity, data)
+    question, gain = findbestquestion(dataimpurity, data, nattribs)
 
     if gain == 0 or maxdepth == 0 or len(data) < minsplitsize:
         leaf = newleaf()
@@ -186,8 +193,8 @@ def buildtree(data, maxdepth = 10, minsplitsize = 2, minleafsize = 1, side=None)
         leaf['side'] = side
         return leaf
 
-    node['truechild'] = buildtree(truelist, maxdepth, minsplitsize, minleafsize, 'truechild')
-    node['falsechild'] = buildtree(falselist, maxdepth, minsplitsize, minleafsize, 'falsechild')
+    node['truechild'] = buildtree(truelist, maxdepth, minsplitsize, minleafsize, nattribs, 'truechild')
+    node['falsechild'] = buildtree(falselist, maxdepth, minsplitsize, minleafsize, nattribs, 'falsechild')
 
     return node
 
@@ -252,4 +259,6 @@ def mergeleafs(node, parent=None):
                 leaf['side'] = node['side']
 
                 parent[node['side']] = leaf
+
+
 
